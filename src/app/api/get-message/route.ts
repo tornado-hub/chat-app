@@ -18,8 +18,6 @@ export async function GET(request: NextRequest) {
   try {
     const client = await clientPromise;
     const db = client.db('chatapp');
-    const senderId=new ObjectId('669a1c7bfdd0129623650fe7')
-    const receiverId=new ObjectId('669a10d3726146d04d034254')
     const messages = await db.collection('messages').find({}).toArray();
     console.log(messages);
     console.log('userId1:', userId1);
