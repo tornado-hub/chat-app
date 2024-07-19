@@ -1,8 +1,10 @@
+// src/components/LoginForm.tsx
 'use client';
 
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { Form, Button, Container, Alert } from 'react-bootstrap';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,26 +17,49 @@ const LoginForm: React.FC = () => {
     setError('');
     try {
       const response = await axios.post('/api/login', { email, password });
-      console.log(response.data);
       localStorage.setItem('token', response.data.token);
-      router.push('/');
+      localStorage.setItem('currentUserId', response.data.userId);
+      router.push('/dashboard');
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         setError(error.response.data.message || 'An error occurred during login');
       } else {
         setError('An unexpected error occurred');
       }
-      console.error('Login failed:', error);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {error && <p style={{color: 'red'}}>{error}</p>}
-      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-      <button type="submit">Login</button>
-    </form>
+    <Container className="mt-5">
+      <h1 className="text-center mb-4">Login</h1>
+      <Form onSubmit={handleSubmit}>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form.Group className="mb-3" controlId="formBasicEmail">
+          <Form.Label>Email address</Form.Label>
+          <Form.Control 
+            type="email" 
+            placeholder="Enter email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            required 
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-3" controlId="formBasicPassword">
+          <Form.Label>Password</Form.Label>
+          <Form.Control 
+            type="password" 
+            placeholder="Password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required 
+          />
+        </Form.Group>
+        <Button variant="primary" type="submit" className="w-100">
+          Login
+        </Button>
+      </Form>
+    </Container>
   );
 };
 
