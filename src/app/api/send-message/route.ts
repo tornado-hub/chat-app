@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
 
   const client = await clientPromise;
   const db = client.db('chatapp');
-
   const result = await db.collection('messages').insertOne({
     senderId: new ObjectId(senderId),
     receiverId: new ObjectId(receiverId),

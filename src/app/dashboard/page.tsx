@@ -21,7 +21,7 @@ const Dashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users'); // Fetch all users or your existing method
+      const response = await axios.get('/api/users'); // Fetch all users
       setUsers(response.data);
       setFilteredUsers(response.data);
     } catch (error) {
@@ -40,14 +40,21 @@ const Dashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('currentUserId'); // Clear current user ID
     router.push('/login');
   };
 
   const selectUser = async (user) => {
     setSelectedUser(user);
-    const currentUserId = localStorage.getItem('currentUserId'); // Assuming the current user ID is stored in local storage
+    const currentUserId = localStorage.getItem('currentUserId');
+    if (!currentUserId) {
+      console.error('Current user ID is null');
+      return;
+    }
+  
     try {
       const response = await axios.get(`/api/get-message?userId1=${currentUserId}&userId2=${user._id}`);
+      console.log('Fetched Messages:', response.data); // Add this line
       setMessages(response.data);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -59,7 +66,8 @@ const Dashboard = () => {
     try {
       await axios.post('/api/send-message', {
         receiverId: selectedUser._id,
-        content: message
+        content: message,
+        senderId: localStorage.getItem('currentUserId')
       });
       setMessage('');
       selectUser(selectedUser); // Refresh messages
@@ -107,13 +115,18 @@ const Dashboard = () => {
             <>
               <h2 className="h5 mb-3 mt-3">Chat with {selectedUser.username}</h2>
               <div className="messages-container bg-light p-3 mb-3" style={{height: '60vh', overflowY: 'auto'}}>
-                {messages.map(msg => (
-                  <div key={msg._id} className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}>
-                    <span className={`d-inline-block p-2 rounded ${msg.senderId === selectedUser._id ? 'bg-primary text-white' : 'bg-secondary text-white'}`}>
-                      {msg.content}
-                    </span>
-                  </div>
-                ))}
+                
+                {messages.length === 0 ? (
+                  <p>No messages</p>
+                ) : (
+                  messages.map(msg => (
+                    <div key={msg._id} className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}>
+                      <span className={`d-inline-block p-2 rounded ${msg.senderId === selectedUser._id ? 'bg-primary text-white' : 'bg-secondary text-white'}`}>
+                        {msg.content}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
               <Form onSubmit={sendMessage}>
                 <Form.Group className="d-flex">

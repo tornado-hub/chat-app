@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
 
-    return NextResponse.json({ token, userId: user._id });
+    return NextResponse.json({ token, userId: user._id,username:user.username });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ message: 'An error occurred during login' }, { status: 500 });

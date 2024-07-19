@@ -1,16 +1,16 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '../../../lib/mongodb';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function GET(request: NextRequest) {
   try {
     const client = await clientPromise;
     const db = client.db('chatapp');
 
-    const users = await db.collection('users').find({}).toArray();
-
-    res.status(200).json(users);
+    const users = await db.collection('users').find().toArray();
+    return NextResponse.json(users);
   } catch (error) {
-    console.error('Failed to fetch users:', error);
-    res.status(500).json({ message: 'An error occurred while fetching users' });
+    console.error('Error fetching users:', error);
+    return NextResponse.json({ message: 'An error occurred while fetching users' }, { status: 500 });
   }
 }
+
