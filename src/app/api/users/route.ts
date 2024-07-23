@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
 
     const users = await db.collection('users').find().toArray();
     return NextResponse.json(users);
-  } catch (error) {
+  } 
+  catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json({ message: 'An error occurred while fetching users' }, { status: 500 });
   }

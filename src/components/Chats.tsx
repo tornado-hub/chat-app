@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import io from 'socket.io-client';
 
 interface Message {
   _id: string;
@@ -16,12 +17,27 @@ interface ChatProps {
   otherUserId: string;
 }
 
+const socket = io();
+
 const Chat: React.FC<ChatProps> = ({ currentUserId, otherUserId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
   useEffect(() => {
     fetchMessages();
+
+    socket.on('newMessage', (message: Message) => {
+      if (
+        (message.senderId === currentUserId && message.receiverId === otherUserId) ||
+        (message.senderId === otherUserId && message.receiverId === currentUserId)
+      ) {
+        setMessages((prevMessages) => [...prevMessages, message]);
+      }
+    });
+
+    return () => {
+      socket.off('newMessage');
+    };
   }, [currentUserId, otherUserId]);
 
   const fetchMessages = async () => {
@@ -36,13 +52,16 @@ const Chat: React.FC<ChatProps> = ({ currentUserId, otherUserId }) => {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('/api/send-message', {
+      const message = {
         senderId: currentUserId,
         receiverId: otherUserId,
         content: newMessage,
-      });
+        timestamp: new Date().toISOString(),
+      };
+
+      await axios.post('/api/send-message', message);
+      socket.emit('sendMessage', message);
       setNewMessage('');
-      fetchMessages();
     } catch (error) {
       console.error('Failed to send message:', error);
     }

@@ -18,10 +18,13 @@ export async function GET(request: NextRequest) {
   try {
     const client = await clientPromise;
     const db = client.db('chatapp');
-    const messages = await db.collection('messages').find({}).toArray();
-    console.log(messages);
-    console.log('userId1:', userId1);
-    console.log('userId2:', new ObjectId('669a10d3726146d04d034254'));
+    const messages = await db.collection('messages').find({
+      $or: [
+        { senderId: new ObjectId(userId1), receiverId: new ObjectId(userId2) },
+        { senderId: new ObjectId(userId2), receiverId: new ObjectId(userId1) },
+      ],
+    }).sort({ timestamp: 1 }).toArray();
+  
     return NextResponse.json(messages);
   } catch (error) {
     console.error('Error fetching messages:', error);
