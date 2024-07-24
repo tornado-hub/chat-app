@@ -20,6 +20,7 @@ app.prepare().then(() => {
     console.log('New client connected');
     
     socket.on('sendMessage', (message) => {
+      console.log('Broadcasting new message:', message);
       io.emit('newMessage', message);
     });
 

@@ -5,6 +5,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Container, Row, Col, ListGroup, Form, Button, InputGroup } from 'react-bootstrap';
+import io from 'socket.io-client';
+
+const socket = io();
 
 const Dashboard = () => {
   const [users, setUsers] = useState([]);
@@ -19,9 +22,29 @@ const Dashboard = () => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+    });
+
+    socket.on('newMessage', (message) => {
+      console.log('Received new message:', message);
+      if (
+        (message.senderId === localStorage.getItem('currentUserId') && message.receiverId === selectedUser._id) ||
+        (message.senderId === selectedUser._id && message.receiverId === localStorage.getItem('currentUserId'))
+      ) {
+        setMessages((prevMessages) => [...prevMessages, message]);
+      }
+    });
+
+    return () => {
+      socket.off('newMessage');
+    };
+  }, [selectedUser]);
+
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users'); // Fetch all users
+      const response = await axios.get('/api/users');
       setUsers(response.data);
       setFilteredUsers(response.data);
     } catch (error) {
@@ -40,7 +63,7 @@ const Dashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('currentUserId'); // Clear current user ID
+    localStorage.removeItem('currentUserId');
     router.push('/login');
   };
 
@@ -51,10 +74,9 @@ const Dashboard = () => {
       console.error('Current user ID is null');
       return;
     }
-  
+
     try {
       const response = await axios.get(`/api/get-message?userId1=${currentUserId}&userId2=${user._id}`);
-      console.log('Fetched Messages:', response.data); // Add this line
       setMessages(response.data);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -64,13 +86,17 @@ const Dashboard = () => {
   const sendMessage = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/send-message', {
+      const messageData = {
+        senderId: localStorage.getItem('currentUserId'),
         receiverId: selectedUser._id,
         content: message,
-        senderId: localStorage.getItem('currentUserId')
-      });
+        timestamp: new Date().toISOString(),
+      };
+
+      await axios.post('/api/send-message', messageData);
+      socket.emit('sendMessage', messageData);
       setMessage('');
-      selectUser(selectedUser); // Refresh messages
+      console.log('Message sent and emitted:', messageData);
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -100,7 +126,7 @@ const Dashboard = () => {
           <ListGroup>
             {filteredUsers.map(user => (
               <ListGroup.Item 
-                key={user._id} 
+                key={user._id}  // Added key here
                 action 
                 onClick={() => selectUser(user)}
                 active={selectedUser && selectedUser._id === user._id}
@@ -114,13 +140,15 @@ const Dashboard = () => {
           {selectedUser ? (
             <>
               <h2 className="h5 mb-3 mt-3">Chat with {selectedUser.username}</h2>
-              <div className="messages-container bg-light p-3 mb-3" style={{height: '60vh', overflowY: 'auto'}}>
-                
+              <div className="messages-container bg-light p-3 mb-3" style={{ height: '60vh', overflowY: 'auto' }}>
                 {messages.length === 0 ? (
                   <p>No messages</p>
                 ) : (
-                  messages.map(msg => (
-                    <div key={msg._id} className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}>
+                  messages.map((msg, index) => (
+                    <div 
+                      key={index}  // Added key here
+                      className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}
+                    >
                       <span className={`d-inline-block p-2 rounded ${msg.senderId === selectedUser._id ? 'bg-primary text-white' : 'bg-secondary text-white'}`}>
                         {msg.content}
                       </span>
