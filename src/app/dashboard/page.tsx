@@ -8,20 +8,55 @@ import { Container, Row, Col, ListGroup, Form, Button, InputGroup } from 'react-
 import io from 'socket.io-client';
 
 const socket = io();
-
+interface Message {
+  senderId: string;
+  receiverId: string;
+  content: string;
+  timestamp: string;
+}
 const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]);
+  // const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     fetchUsers();
   }, []);
+  const formatMessageTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  };
+
+  const groupMessagesByDate = (messages: Message[]): [string, Message[]][] => {
+    const groups: { [key: string]: Message[] } = {};
+    messages.forEach(message => {
+      const date = new Date(message.timestamp).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+    });
+    return Object.entries(groups).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime()) as [string, Message[]][];
+  };
   useEffect(() => {
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
@@ -103,8 +138,8 @@ const Dashboard = () => {
   };
 
   return (
-    <Container fluid className="vh-100 d-flex flex-column">
-      <Row className="py-3 bg-light">
+    <Container fluid className="vh-100 d-flex flex-column bg-grayish">
+      <Row className="py-3 ">
         <Col>
           <h1 className="mb-0">Chat Dashboard</h1>
         </Col>
@@ -137,41 +172,52 @@ const Dashboard = () => {
           </ListGroup>
         </Col>
         <Col md={8}>
-          {selectedUser ? (
-            <>
-              <h2 className="h5 mb-3 mt-3">Chat with {selectedUser.username}</h2>
-              <div className="messages-container bg-light p-3 mb-3" style={{ height: '60vh', overflowY: 'auto' }}>
-                {messages.length === 0 ? (
-                  <p>No messages</p>
-                ) : (
-                  messages.map((msg, index) => (
-                    <div 
-                      key={index}  // Added key here
-                      className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}
-                    >
-                      <span className={`d-inline-block p-2 rounded ${msg.senderId === selectedUser._id ? 'bg-primary text-white' : 'bg-secondary text-white'}`}>
-                        {msg.content}
+        {selectedUser ? (
+          <>
+            <h2 className="h5 mb-3 mt-3">Chat with {selectedUser.username}</h2>
+            <div className="messages-container bg-dark p-3 mb-3" style={{ height: '70vh', overflowY: 'auto' }}>
+              {messages.length === 0 ? (
+                <p>No messages</p>
+              ) : (
+                groupMessagesByDate(messages).map(([date, dateMessages]) => (
+                  <div key={date}>
+                    <div className="text-center my-3">
+                      <span className="bg-secondary text-white px-2 py-1 rounded-pill" style={{ fontSize: '0.8em' }}>
+                        {formatDate(date)}
                       </span>
                     </div>
-                  ))
-                )}
-              </div>
-              <Form onSubmit={sendMessage}>
-                <Form.Group className="d-flex">
-                  <Form.Control
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type a message"
-                  />
-                  <Button type="submit" variant="primary" className="ms-2">Send</Button>
-                </Form.Group>
-              </Form>
-            </>
-          ) : (
-            <p className="text-center mt-5">Select a user to start chatting</p>
-          )}
-        </Col>
+                    {dateMessages.map((msg, index) => (
+                      <div 
+                        key={index}
+                        className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}
+                      >
+                        <div className={`d-inline-block p-2 rounded ${msg.senderId === selectedUser._id ? 'bg-primary text-white' : 'bg-secondary text-white'}`}>
+                          <span>{msg.content}</span>
+                          <span className="ms-2 text-white-50" style={{ fontSize: '0.75em' }}>{formatMessageTime(msg.timestamp)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+            <Form onSubmit={sendMessage}>
+              <Form.Group className="d-flex">
+                <Form.Control
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Type a message"
+                />
+                <Button type="submit" variant="primary" className="ms-2">Send</Button>
+              </Form.Group>
+            </Form>
+          </>
+        ) : (
+          <p className="text-center mt-5">Select a user to start chatting</p>
+        )}
+      </Col>
+
       </Row>
     </Container>
   );
