@@ -1,8 +1,10 @@
-// src/components/Chat.tsx
+// src/app/dashboard/Chat.tsx
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Form, Button } from 'react-bootstrap';
 import io from 'socket.io-client';
+import axios from 'axios';
 
 const socket = io();
 
@@ -20,28 +22,16 @@ interface User {
 
 interface ChatProps {
   selectedUser: User | null;
-  currentUserId: string | null;
+  currentUserId: string;
+  onSelectUser: (user: User) => void;
 }
 
-const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId, onSelectUser }) => {
   const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    if (!selectedUser || !currentUserId) return;
-
-    socket.on('connect', () => {
-      console.log('Socket connected:', socket.id);
-    });
-
-    socket.on('newMessage', (message: Message) => {
-      if (
-        (message.senderId === currentUserId && message.receiverId === selectedUser._id) ||
-        (message.senderId === selectedUser._id && message.receiverId === currentUserId)
-      ) {
-        setMessages((prevMessages) => [...prevMessages, message]);
-      }
-    });
+    if (!selectedUser) return;
 
     const fetchMessages = async () => {
       try {
@@ -54,10 +44,39 @@ const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId }) => {
 
     fetchMessages();
 
+    socket.on('newMessage', (message: Message) => {
+      if (
+        (message.senderId === currentUserId && message.receiverId === selectedUser._id) ||
+        (message.senderId === selectedUser._id && message.receiverId === currentUserId)
+      ) {
+        setMessages((prevMessages) => [...prevMessages, message]);
+      }
+    });
+
     return () => {
       socket.off('newMessage');
     };
   }, [selectedUser, currentUserId]);
+
+  const sendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedUser || !currentUserId) return;
+
+    const messageData: Message = {
+      senderId: currentUserId,
+      receiverId: selectedUser._id,
+      content: message,
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      await axios.post('/api/send-message', messageData);
+      socket.emit('sendMessage', messageData);
+      setMessage('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  };
 
   const formatMessageTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -81,7 +100,7 @@ const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId }) => {
 
   const groupMessagesByDate = (messages: Message[]): [string, Message[]][] => {
     const groups: { [key: string]: Message[] } = {};
-    messages.forEach(message => {
+    messages.forEach((message) => {
       const date = new Date(message.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
@@ -89,26 +108,6 @@ const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId }) => {
       groups[date].push(message);
     });
     return Object.entries(groups).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime()) as [string, Message[]][];
-  };
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUserId || !selectedUser) return;
-
-    try {
-      const messageData: Message = {
-        senderId: currentUserId,
-        receiverId: selectedUser._id,
-        content: message,
-        timestamp: new Date().toISOString(),
-      };
-
-      await axios.post('/api/send-message', messageData);
-      socket.emit('sendMessage', messageData);
-      setMessage('');
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
   };
 
   return (
@@ -128,7 +127,7 @@ const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId }) => {
                     </span>
                   </div>
                   {dateMessages.map((msg, index) => (
-                    <div 
+                    <div
                       key={index}
                       className={`mb-2 ${msg.senderId === selectedUser._id ? 'text-start' : 'text-end'}`}
                     >
@@ -149,13 +148,14 @@ const Chat: React.FC<ChatProps> = ({ selectedUser, currentUserId }) => {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type a message"
+                required
               />
               <Button type="submit" variant="primary" className="ms-2">Send</Button>
             </Form.Group>
           </Form>
         </>
       ) : (
-        <p className="text-center mt-5">Select a user to start chatting</p>
+        <p>Select a user to start chatting</p>
       )}
     </>
   );

@@ -101,7 +101,18 @@ body {
 .container-fluid {
   margin: 0 auto;
 }
+.btn-smaller {
+  padding: 0.375rem 0.75rem; /* Smaller padding */
+  font-size: 0.875rem; /* Smaller font size */
+  line-height: 1.5; /* Adjust line-height */
+}
 
+/* Apply hover effect */
+.btn-hover-effect:hover {
+  background-color: rgba(211, 211, 211, 0.5); /* Light grey with transparency */
+  border-color: rgba(211, 211, 211, 0.5);
+  transition: background-color 0.3s ease;
+}
 /* Example: Styling links globally */
 a {
   color: inherit;
