@@ -99,7 +99,7 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('currentUserId');
-    router.push('/login');
+    router.push('/');
   };
 
   const selectUser = async (user) => {
